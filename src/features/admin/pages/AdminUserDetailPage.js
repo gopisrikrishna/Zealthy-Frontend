@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import { Link, useParams } from 'react-router-dom';
 import SectionCard from '../../../shared/components/SectionCard';
 import { adminApi } from '../../../services';
@@ -53,11 +53,9 @@ function AdminUserDetailPage() {
   const [prescriptionForm, setPrescriptionForm] = useState(EMPTY_PRESCRIPTION);
   const [editingPrescriptionId, setEditingPrescriptionId] = useState(null);
 
-  useEffect(() => {
-    loadAll();
-  }, [id]);
 
-  async function loadAll() {
+
+  const loadAll = useCallback(async () => {
     setError('');
     try {
       const [userData, appointmentData, prescriptionData] = await Promise.all([
@@ -72,7 +70,11 @@ function AdminUserDetailPage() {
     } catch (requestError) {
       setError(requestError.message);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   function showToast(message) {
     setToastMessage(message);
