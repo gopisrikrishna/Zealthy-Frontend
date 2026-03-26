@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SectionCard from '../../../shared/components/SectionCard';
 import { adminApi } from '../../../services';
@@ -15,6 +15,17 @@ function fullName(user) {
   return [user?.firstName, user?.lastName].filter(Boolean).join(' ');
 }
 
+function paginate(items, page, perPage) {
+  const safePerPage = Number(perPage) || 1;
+  const safePage = Math.max(1, Number(page) || 1);
+  const start = (safePage - 1) * safePerPage;
+  return items.slice(start, start + safePerPage);
+}
+
+function totalPages(itemsLength, perPage) {
+  return Math.max(1, Math.ceil(itemsLength / (Number(perPage) || 1)));
+}
+
 function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,9 +36,19 @@ function AdminUsersPage() {
   const [editUserId, setEditUserId] = useState(null);
   const [editPayload, setEditPayload] = useState(EMPTY_USER);
 
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
+
+  const pages = totalPages(users.length, perPage);
+  const pagedUsers = useMemo(() => paginate(users, page, perPage), [users, page, perPage]);
+
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [users]);
 
   async function loadUsers() {
     setLoading(true);
@@ -111,7 +132,7 @@ function AdminUsersPage() {
         <table className="basic-table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Sl No</th>
               <th>Name</th>
               <th>Email</th>
               <th>Type</th>
@@ -121,23 +142,63 @@ function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.id}</td>
-                <td>{fullName(user) || '-'}</td>
-                <td>{user.email}</td>
-                <td>{user.userType}</td>
-                <td>{Array.isArray(user.appointments) ? user.appointments.length : '-'}</td>
-                <td>{Array.isArray(user.prescriptions) ? user.prescriptions.length : '-'}</td>
-                <td className="actions-cell">
-                  <Link to={`/admin/users/${user.id}`}>Open record</Link>
-                  <button type="button" onClick={() => startEdit(user)}>Edit</button>
-                  <button type="button" onClick={() => handleDeleteUser(user.id)}>Delete</button>
-                </td>
-              </tr>
-            ))}
+            {pagedUsers.map((user, index) => {
+              const serialNumber = (page - 1) * perPage + index + 1;
+              return (
+                <tr key={user.id}>
+                  <td>{serialNumber}</td>
+                  <td>{fullName(user) || '-'}</td>
+                  <td>{user.email}</td>
+                  <td>{user.userType}</td>
+                  <td>{Array.isArray(user.appointments) ? user.appointments.length : '-'}</td>
+                  <td>{Array.isArray(user.prescriptions) ? user.prescriptions.length : '-'}</td>
+                  <td className="actions-cell">
+                    <Link to={`/admin/users/${user.id}`}>Open record</Link>
+                    <button type="button" onClick={() => startEdit(user)}>Edit</button>
+                    <button type="button" onClick={() => handleDeleteUser(user.id)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+
+        {users.length > 5 && (
+          <div className="pagination-row">
+            <div className="pagination-meta">
+              <span>Per page</span>
+              <select
+                value={perPage}
+                onChange={(event) => {
+                  setPerPage(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+              </select>
+            </div>
+            <div className="pagination-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Prev
+              </button>
+              <span>{page} / {pages}</span>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
+                disabled={page >= pages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard
